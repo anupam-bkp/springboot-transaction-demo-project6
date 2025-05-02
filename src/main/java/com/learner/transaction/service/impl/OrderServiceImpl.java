@@ -13,6 +13,7 @@ import com.learner.transaction.repository.OrderRepository;
 import com.learner.transaction.repository.PaymentRepository;
 import com.learner.transaction.service.OrderService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -33,6 +34,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional     //(rollbackFor = PaymentException.class)
     public OrderResponse placeOrder(OrderRequest orderRequest) {
 
         //Transaction 1 - Save the order details
@@ -40,7 +42,7 @@ public class OrderServiceImpl implements OrderService {
         orderDto.setStatus("In Progress");
         orderDto.setOrderTrackingNumber(UUID.randomUUID().toString());
         Order savedOrder = orderRepository.save(orderMapper.convertToEntity(orderDto));
-        OrderDto savedoOrderDto = orderMapper.convertToDto(savedOrder);
+        OrderDto savedOrderDto = orderMapper.convertToDto(savedOrder);
 
         //Transaction 2 - Save the payment details
         final PaymentDto paymentDto = orderRequest.getPaymentDto();
@@ -49,12 +51,12 @@ public class OrderServiceImpl implements OrderService {
             throw new PaymentException("Payment card type does not supported.");
         }
 
-        paymentDto.setOrderId(savedoOrderDto.getId());
+        paymentDto.setOrderId(savedOrderDto.getId());
         Payment savedPayment = paymentRepository.save(paymentMapper.convertToEntity(paymentDto));
 
         final OrderResponse orderResponse = new OrderResponse();
-        orderResponse.setOrderTrackingNumber(savedoOrderDto.getOrderTrackingNumber());
-        orderResponse.setStatus(savedoOrderDto.getStatus());
+        orderResponse.setOrderTrackingNumber(savedOrderDto.getOrderTrackingNumber());
+        orderResponse.setStatus(savedOrderDto.getStatus());
         orderResponse.setMessage("Success");
 
         return orderResponse;
